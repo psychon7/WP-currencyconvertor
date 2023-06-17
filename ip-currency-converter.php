@@ -25,55 +25,32 @@ function ip_currency_converter_get_currency() {
 
 // Get the conversion rate from USD to the given currency
 function ip_currency_converter_get_conversion_rate($currency) {
-    // Get conversion rate from transient, if available
-    $transient_name = 'ip_currency_converter_rate_' . $currency;
-    $conversion_rate = get_transient($transient_name);
-    
-    if ($conversion_rate === false) {
-        // If transient is not set, make API request
-        $curl = curl_init();
+    $curl = curl_init();
 
-        curl_setopt_array($curl, [
-            CURLOPT_URL => "https://currency-converter27.p.rapidapi.com/currency/convert",
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "POST",
-            CURLOPT_POSTFIELDS => json_encode([
-                'from' => 'USD',
-                'to' => $currency,
-                'amount' => 1
-            ]),
-            CURLOPT_HTTPHEADER => [
-                "X-RapidAPI-Host: currency-converter27.p.rapidapi.com",
-                "X-RapidAPI-Key: 4e1eae0c1amshe32171c489dc2ffp11a467jsn25b1837841f4",
-                "content-type: application/json"
-            ],
-        ]);
+    curl_setopt_array($curl, [
+        CURLOPT_URL => "https://currency-conversion-and-exchange-rates.p.rapidapi.com/latest?from=USD&to={$currency}",
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => "",
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => "GET",
+        CURLOPT_HTTPHEADER => [
+            "X-RapidAPI-Host: currency-conversion-and-exchange-rates.p.rapidapi.com",
+            "X-RapidAPI-Key: 4e1eae0c1amshe32171c489dc2ffp11a467jsn25b1837841f4"  // This should be stored more securely
+        ],
+    ]);
 
-        $response = curl_exec($curl);
-        $err = curl_error($curl);
-        
-        curl_close($curl);
+    $response = curl_exec($curl);
+    curl_close($curl);
 
-        if ($err) {
-            // If there's an error, return 1 to avoid changing the price
-            return 1;
-        } else {
-            // Decode the response and get the conversion rate
-            $response_data = json_decode($response, true);
-            $conversion_rate = $response_data['rate'];
-
-            // Store the conversion rate in a transient for 24 hours
-            set_transient($transient_name, $conversion_rate, DAY_IN_SECONDS);
-        }
+    if (!$response) {
+        return 1.0; // If there's an error, return conversion rate of 1
     }
-    
-    return $conversion_rate;
-}
 
+    $data = json_decode($response);
+    return $data->rates->{$currency} ?? 1.0;
+}
 
 // Change the displayed price based on the visitor's currency
 function ip_currency_converter_change_price_display($price, $product) {
